@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Senate Seat Allocator</title>
 <style>
-    body { font-family: Arial, sans-serif; margin: 2rem; background: #f0f2f5; }
-    h1, h2 { color: #333; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
-    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-    input { width: 100%; padding: 0.4rem; box-sizing: border-box; }
-    button { padding: 0.5rem 1rem; font-size: 1rem; margin-bottom: 1rem; }
-    pre { background: #fff; padding: 1rem; border-radius: 5px; overflow-x: auto; }
-    .add-row { margin-bottom: 1rem; }
+body { font-family: Arial, sans-serif; margin: 2rem; background: #f0f2f5; }
+h1, h2 { color: #333; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+input { width: 100%; padding: 0.4rem; box-sizing: border-box; }
+button { padding: 0.5rem 1rem; font-size: 1rem; margin-bottom: 1rem; }
+pre { background: #fff; padding: 1rem; border-radius: 5px; overflow-x: auto; }
+.add-row { margin-bottom: 1rem; }
 </style>
 </head>
 <body>
@@ -24,17 +24,13 @@
     <thead>
         <tr><th>Party Name</th><th>Votes</th><th>Action</th></tr>
     </thead>
-    <tbody>
-        <tr>
-            <td><input value="Reclaim"></td>
-            <td><input type="number" value="6"></td>
-            <td><button onclick="deleteRow(this)">Delete</button></td>
-        </tr>
-        <tr>
-            <td><input value="Purple Crown"></td>
-            <td><input type="number" value="5"></td>
-            <td><button onclick="deleteRow(this)">Delete</button></td>
-        </tr>
+    <tbody id="houseBody">
+        <!-- Pre-populated with Python starting values -->
+        <tr><td><input value="Reclaim"></td><td><input type="number" value="6"></td><td><button onclick="deleteRow(this)">Delete</button></td></tr>
+        <tr><td><input value="Purple Crown"></td><td><input type="number" value="5"></td><td><button onclick="deleteRow(this)">Delete</button></td></tr>
+        <tr><td><input value="Social Democratic"></td><td><input type="number" value="4"></td><td><button onclick="deleteRow(this)">Delete</button></td></tr>
+        <tr><td><input value="Solarist"></td><td><input type="number" value="3"></td><td><button onclick="deleteRow(this)">Delete</button></td></tr>
+        <tr><td><input value="Progressive"></td><td><input type="number" value="2"></td><td><button onclick="deleteRow(this)">Delete</button></td></tr>
     </tbody>
 </table>
 <button class="add-row" onclick="addHouseRow()">+ Add Party</button>
@@ -44,17 +40,13 @@
     <thead>
         <tr><th>Party Name</th><th>Candidate Names (comma-separated)</th><th>Action</th></tr>
     </thead>
-    <tbody>
-        <tr>
-            <td><input value="Reclaim"></td>
-            <td><input value="Josef, John Louis"></td>
-            <td><button onclick="deleteRow(this)">Delete</button></td>
-        </tr>
-        <tr>
-            <td><input value="Purple Crown"></td>
-            <td><input value="Cierna"></td>
-            <td><button onclick="deleteRow(this)">Delete</button></td>
-        </tr>
+    <tbody id="partyListBody">
+        <!-- Pre-populated with Python starting values -->
+        <tr><td><input value="Reclaim"></td><td><input value="Josef, John Louis"></td><td><button onclick="deleteRow(this)">Delete</button></td></tr>
+        <tr><td><input value="Purple Crown"></td><td><input value="Cierna"></td><td><button onclick="deleteRow(this)">Delete</button></td></tr>
+        <tr><td><input value="Social Democratic"></td><td><input value="Dreamersk"></td><td><button onclick="deleteRow(this)">Delete</button></td></tr>
+        <tr><td><input value="Solarist"></td><td><input value="Hiro Solarist"></td><td><button onclick="deleteRow(this)">Delete</button></td></tr>
+        <tr><td><input value="Progressive"></td><td><input value="Michael Brain"></td><td><button onclick="deleteRow(this)">Delete</button></td></tr>
     </tbody>
 </table>
 <button class="add-row" onclick="addPartyListRow()">+ Add Party</button>
@@ -71,45 +63,53 @@
 
 <script>
 function deleteRow(button) {
-    const row = button.parentElement.parentElement;
-    row.parentElement.removeChild(row);
+    button.closest('tr').remove();
 }
 
 function addHouseRow() {
-    const tbody = document.getElementById("houseTable").querySelector("tbody");
+    const tbody = document.getElementById("houseBody");
     const row = document.createElement("tr");
     row.innerHTML = `<td><input></td><td><input type="number"></td><td><button onclick="deleteRow(this)">Delete</button></td>`;
     tbody.appendChild(row);
 }
 
 function addPartyListRow() {
-    const tbody = document.getElementById("partyListTable").querySelector("tbody");
+    const tbody = document.getElementById("partyListBody");
     const row = document.createElement("tr");
     row.innerHTML = `<td><input></td><td><input></td><td><button onclick="deleteRow(this)">Delete</button></td>`;
     tbody.appendChild(row);
 }
 
 function allocateSeats() {
+    // Read house results in insertion order
     const houseResults = {};
+    const partyOrder = []; // preserve order like Python dict
     document.querySelectorAll("#houseTable tbody tr").forEach(row => {
-        const cells = row.querySelectorAll("input");
-        if(cells[0].value) houseResults[cells[0].value] = parseInt(cells[1].value) || 0;
+        const [partyCell, votesCell] = row.querySelectorAll("input");
+        const party = partyCell.value.trim();
+        const votes = parseInt(votesCell.value) || 0;
+        if(party) {
+            houseResults[party] = votes;
+            partyOrder.push(party);
+        }
     });
 
+    // Read party lists
     const partyLists = {};
     document.querySelectorAll("#partyListTable tbody tr").forEach(row => {
-        const cells = row.querySelectorAll("input");
-        if(cells[0].value) partyLists[cells[0].value] = cells[1].value.split(",").map(s => s.trim()).filter(Boolean);
+        const [partyCell, candidatesCell] = row.querySelectorAll("input");
+        const party = partyCell.value.trim();
+        if(party) {
+            partyLists[party] = candidatesCell.value.split(",").map(s => s.trim()).filter(Boolean);
+        }
     });
 
     const requiredVacantSeats = parseInt(document.getElementById("requiredVacant").value);
 
-    let senateSeats = {};
-    let seatAssignments = [];
-    let assignedSeats = 0, vacantSeats = 0, occupiedSeats = 0;
+    let senateSeats = {}, seatAssignments = [], assignedSeats = 0, vacantSeats = 0, occupiedSeats = 0;
     let occupiedByParty = {}, vacantByParty = {};
 
-    for (let party in houseResults) {
+    for (let party of partyOrder) {
         senateSeats[party] = 0;
         occupiedByParty[party] = 0;
         vacantByParty[party] = 0;
@@ -119,47 +119,53 @@ function allocateSeats() {
         return partyLists[party] && partyLists[party].length ? partyLists[party].shift() : null;
     }
 
-    while (vacantSeats < requiredVacantSeats) {
-        let quotients = {};
-        for (let party in houseResults) {
-            quotients[party] = houseResults[party] / (senateSeats[party] + 1);
+    while(vacantSeats < requiredVacantSeats) {
+        // compute quotients
+        const quotients = {};
+        for(let party of partyOrder) {
+            quotients[party] = houseResults[party] / (senateSeats[party]+1);
         }
-        let nextParty = Object.keys(quotients).reduce((a,b) => quotients[a] > quotients[b] ? a : b);
-        let candidate = getNextCandidate(nextParty);
+        const maxQuotient = Math.max(...Object.values(quotients));
+        // Tie-breaking: pick first party in partyOrder with max quotient
+        const nextParty = partyOrder.find(p => quotients[p] === maxQuotient);
 
-        assignedSeats += 1;
-        senateSeats[nextParty] += 1;
+        const candidate = getNextCandidate(nextParty);
+        assignedSeats++;
+        senateSeats[nextParty]++;
 
-        if (candidate) {
+        if(candidate) {
             seatAssignments.push([assignedSeats, nextParty, candidate]);
-            occupiedSeats += 1;
-            occupiedByParty[nextParty] += 1;
+            occupiedSeats++;
+            occupiedByParty[nextParty]++;
         } else {
             seatAssignments.push([assignedSeats, nextParty, "VACANT"]);
-            vacantSeats += 1;
-            vacantByParty[nextParty] += 1;
+            vacantSeats++;
+            vacantByParty[nextParty]++;
         }
     }
 
-    let nextQuotients = {};
-    for (let party in houseResults) {
-        nextQuotients[party] = houseResults[party] / (senateSeats[party] + 1);
+    // Determine next in line
+    const nextQuotients = {};
+    for(let party of partyOrder) {
+        nextQuotients[party] = houseResults[party] / (senateSeats[party]+1);
     }
-    let nextInLineParty = Object.keys(nextQuotients).reduce((a,b) => nextQuotients[a] > nextQuotients[b] ? a : b);
+    const maxNext = Math.max(...Object.values(nextQuotients));
+    const nextInLineParty = partyOrder.find(p => nextQuotients[p] === maxNext);
 
-    let output = `Senate Seat Assignments:\n`;
+    // Output results
+    let output = "Senate Seat Assignments:\n";
     seatAssignments.forEach(([num, party, member]) => {
         output += `Seat ${num}: ${party} → ${member}\n`;
     });
 
-    output += `\nSeat Totals (including vacant seats):\n`;
-    for (let party in senateSeats) output += `${party}: ${senateSeats[party]}\n`;
+    output += "\nSeat Totals (including vacant seats):\n";
+    for(let party of partyOrder) output += `${party}: ${senateSeats[party]}\n`;
 
-    output += `\nOccupied Seats by Party:\n`;
-    for (let party in occupiedByParty) output += `${party}: ${occupiedByParty[party]}\n`;
+    output += "\nOccupied Seats by Party:\n";
+    for(let party of partyOrder) output += `${party}: ${occupiedByParty[party]}\n`;
 
-    output += `\nVacant Seats by Party:\n`;
-    for (let party in vacantByParty) output += `${party}: ${vacantByParty[party]}\n`;
+    output += "\nVacant Seats by Party:\n";
+    for(let party of partyOrder) output += `${party}: ${vacantByParty[party]}\n`;
 
     output += `\nTotal Occupied Seats: ${occupiedSeats}\n`;
     output += `Total Vacant Seats: ${vacantSeats}\n`;
