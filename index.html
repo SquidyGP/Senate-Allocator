@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Senate Seat Allocator</title>
+<title>National Council Seat Allocator</title>
 <style>
 body { font-family: Arial, sans-serif; margin: 2rem; background: #f0f2f5; }
 h1, h2 { color: #333; }
@@ -17,9 +17,9 @@ pre { background: #fff; padding: 1rem; border-radius: 5px; overflow-x: auto; }
 </head>
 <body>
 
-<h1>Senate Seat Allocator</h1>
+<h1>National Council Seat Allocator</h1>
 
-<h2>House Results</h2>
+<h2>Party List Results</h2>
 <table id="houseTable">
     <thead>
         <tr><th>Party Name</th><th>Votes</th><th>Action</th></tr>
@@ -56,6 +56,10 @@ pre { background: #fff; padding: 1rem; border-radius: 5px; overflow-x: auto; }
 <input type="number" id="requiredVacant" value="5" min="0">
 
 <br><br>
+<label>Maximum Total Seats:</label>
+<input type="number" id="maxSeats" value="150" min="1">
+
+<br><br>
 <button onclick="allocateSeats()">Allocate Seats</button>
 
 <h2>Results</h2>
@@ -81,9 +85,9 @@ function addPartyListRow() {
 }
 
 function allocateSeats() {
-    // Read house results in insertion order
+    // Read party list results in insertion order
     const houseResults = {};
-    const partyOrder = []; // preserve order like Python dict
+    const partyOrder = [];
     document.querySelectorAll("#houseTable tbody tr").forEach(row => {
         const [partyCell, votesCell] = row.querySelectorAll("input");
         const party = partyCell.value.trim();
@@ -94,7 +98,7 @@ function allocateSeats() {
         }
     });
 
-    // Read party lists
+    // Read party candidate lists
     const partyLists = {};
     document.querySelectorAll("#partyListTable tbody tr").forEach(row => {
         const [partyCell, candidatesCell] = row.querySelectorAll("input");
@@ -105,12 +109,13 @@ function allocateSeats() {
     });
 
     const requiredVacantSeats = parseInt(document.getElementById("requiredVacant").value);
+    const maxSeats = parseInt(document.getElementById("maxSeats").value);
 
-    let senateSeats = {}, seatAssignments = [], assignedSeats = 0, vacantSeats = 0, occupiedSeats = 0;
+    let councilSeats = {}, seatAssignments = [], assignedSeats = 0, vacantSeats = 0, occupiedSeats = 0;
     let occupiedByParty = {}, vacantByParty = {};
 
     for (let party of partyOrder) {
-        senateSeats[party] = 0;
+        councilSeats[party] = 0;
         occupiedByParty[party] = 0;
         vacantByParty[party] = 0;
     }
@@ -119,19 +124,17 @@ function allocateSeats() {
         return partyLists[party] && partyLists[party].length ? partyLists[party].shift() : null;
     }
 
-    while(vacantSeats < requiredVacantSeats) {
-        // compute quotients
+    while(vacantSeats < requiredVacantSeats && assignedSeats < maxSeats) {
         const quotients = {};
         for(let party of partyOrder) {
-            quotients[party] = houseResults[party] / (senateSeats[party]+1);
+            quotients[party] = houseResults[party] / (councilSeats[party]+1);
         }
         const maxQuotient = Math.max(...Object.values(quotients));
-        // Tie-breaking: pick first party in partyOrder with max quotient
         const nextParty = partyOrder.find(p => quotients[p] === maxQuotient);
 
         const candidate = getNextCandidate(nextParty);
         assignedSeats++;
-        senateSeats[nextParty]++;
+        councilSeats[nextParty]++;
 
         if(candidate) {
             seatAssignments.push([assignedSeats, nextParty, candidate]);
@@ -145,21 +148,24 @@ function allocateSeats() {
     }
 
     // Determine next in line
-    const nextQuotients = {};
-    for(let party of partyOrder) {
-        nextQuotients[party] = houseResults[party] / (senateSeats[party]+1);
+    let nextInLineParty = "N/A";
+    if (assignedSeats < maxSeats) {
+        const nextQuotients = {};
+        for(let party of partyOrder) {
+            nextQuotients[party] = houseResults[party] / (councilSeats[party]+1);
+        }
+        const maxNext = Math.max(...Object.values(nextQuotients));
+        nextInLineParty = partyOrder.find(p => nextQuotients[p] === maxNext);
     }
-    const maxNext = Math.max(...Object.values(nextQuotients));
-    const nextInLineParty = partyOrder.find(p => nextQuotients[p] === maxNext);
 
     // Output results
-    let output = "Senate Seat Assignments:\n";
+    let output = "National Council Seat Assignments:\n";
     seatAssignments.forEach(([num, party, member]) => {
         output += `Seat ${num}: ${party} → ${member}\n`;
     });
 
     output += "\nSeat Totals (including vacant seats):\n";
-    for(let party of partyOrder) output += `${party}: ${senateSeats[party]}\n`;
+    for(let party of partyOrder) output += `${party}: ${councilSeats[party]}\n`;
 
     output += "\nOccupied Seats by Party:\n";
     for(let party of partyOrder) output += `${party}: ${occupiedByParty[party]}\n`;
@@ -169,6 +175,8 @@ function allocateSeats() {
 
     output += `\nTotal Occupied Seats: ${occupiedSeats}\n`;
     output += `Total Vacant Seats: ${vacantSeats}\n`;
+    output += `Total Seats Assigned: ${assignedSeats}\n`;
+
     output += `\n📌 Next Party in Line for a Seat: ${nextInLineParty}`;
 
     document.getElementById("results").textContent = output;
